@@ -58,10 +58,7 @@ RETRY_TEST_NAMES: Dict[str, int] = collections.defaultdict(int)
 
 
 def request_params(request: httputil.HTTPServerRequest) -> Dict[str, bytes]:
-    params = {}
-    for k, v in request.arguments.items():
-        params[k] = next(iter(v))
-    return params
+    return {k: next(iter(v)) for k, v in request.arguments.items()}
 
 
 class TestingApp(RequestHandler):
@@ -121,9 +118,7 @@ class TestingApp(RequestHandler):
         """Return the requester's certificate."""
         cert = request.get_ssl_certificate()
         assert isinstance(cert, dict)
-        subject = {}
-        if cert is not None:
-            subject = {k: v for (k, v) in [y for z in cert["subject"] for y in z]}
+        subject = {} if cert is None else dict([y for z in cert["subject"] for y in z])
         return Response(json.dumps(subject))
 
     def alpn_protocol(self, request: httputil.HTTPServerRequest) -> Response:
@@ -139,8 +134,7 @@ class TestingApp(RequestHandler):
     def set_up(self, request: httputil.HTTPServerRequest) -> Response:
         params = request_params(request)
         test_type = params.get("test_type")
-        test_id = params.get("test_id")
-        if test_id:
+        if test_id := params.get("test_id"):
             print(f"\nNew test {test_type!r}: {test_id!r}")
         else:
             print(f"\nNew test {test_type!r}")
@@ -177,10 +171,8 @@ class TestingApp(RequestHandler):
         file_ = files_[0]
 
         data = file_["body"]
-        if int(size) != len(data):
-            return Response(
-                f"Wrong size: {int(size)} != {len(data)}", status="400 Bad Request"
-            )
+        if size != len(data):
+            return Response(f"Wrong size: {size} != {len(data)}", status="400 Bad Request")
 
         got_filename = file_["filename"]
         if isinstance(got_filename, bytes):
@@ -302,12 +294,9 @@ class TestingApp(RequestHandler):
         return Response(["123"] * 4)
 
     def chunked_gzip(self, request: httputil.HTTPServerRequest) -> Response:
-        chunks = []
         compressor = zlib.compressobj(6, zlib.DEFLATED, 16 + zlib.MAX_WBITS)
 
-        for uncompressed in [b"123"] * 4:
-            chunks.append(compressor.compress(uncompressed))
-
+        chunks = [compressor.compress(uncompressed) for uncompressed in [b"123"] * 4]
         chunks.append(compressor.flush())
 
         return Response(chunks, headers=[("Content-Encoding", "gzip")])
@@ -339,8 +328,7 @@ class TestingApp(RequestHandler):
     def redirect_after(self, request: httputil.HTTPServerRequest) -> Response:
         "Perform a redirect to ``target``"
         params = request_params(request)
-        date = params.get("date")
-        if date:
+        if date := params.get("date"):
             retry_after = str(
                 httputil.format_timestamp(datetime.utcfromtimestamp(float(date)))
             )

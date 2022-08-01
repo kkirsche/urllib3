@@ -135,15 +135,12 @@ def run_proxy(port: int, start_ioloop: bool = True) -> None:
     """
     app = tornado.web.Application([(r".*", ProxyHandler)])
     app.listen(port)
-    ioloop = tornado.ioloop.IOLoop.instance()
     if start_ioloop:
+        ioloop = tornado.ioloop.IOLoop.instance()
         ioloop.start()
 
 
 if __name__ == "__main__":
-    port = 8888
-    if len(sys.argv) > 1:
-        port = int(sys.argv[1])
-
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
     print(f"Starting HTTP proxy on port {port}")
     run_proxy(port)

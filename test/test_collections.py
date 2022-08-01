@@ -35,7 +35,7 @@ class TestLRUContainer:
         for i in range(5):
             d[i] = str(i)
 
-        for i in range(5):
+        for _ in range(5):
             d.get(0)
 
         # Add one more entry
@@ -111,7 +111,7 @@ class TestLRUContainer:
         for i in range(5):
             d[i] = i
         assert list(d._container.keys()) == list(range(5))
-        assert evicted_items == []  # Nothing disposed
+        assert not evicted_items
 
         d[5] = 5
         assert list(d._container.keys()) == list(range(1, 6))
@@ -132,8 +132,7 @@ class TestLRUContainer:
 
 class NonMappingHeaderContainer:
     def __init__(self, **kwargs: str) -> None:
-        self._data = {}
-        self._data.update(kwargs)
+        self._data = {} | kwargs
 
     def keys(self) -> Iterator[str]:
         return iter(self._data)
@@ -332,9 +331,9 @@ class TestHTTPHeaderDict:
         b = HTTPHeaderDict(cookie="foo, bar")
         c = NonMappingHeaderContainer(cookie="foo, bar")
         e = [("cookie", "foo, bar")]
-        assert not (d != b)
-        assert not (d != c)
-        assert not (d != e)
+        assert d == b
+        assert d == c
+        assert d == e
         assert d != 2
 
     def test_pop(self, d: HTTPHeaderDict) -> None:

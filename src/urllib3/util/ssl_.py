@@ -252,7 +252,7 @@ def resolve_cert_reqs(candidate: Union[None, int, str]) -> "VerifyMode":
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
         if res is None:
-            res = getattr(ssl, "CERT_" + candidate)
+            res = getattr(ssl, f"CERT_{candidate}")
         return res  # type: ignore[no-any-return]
 
     return candidate  # type: ignore[return-value]
@@ -268,7 +268,7 @@ def resolve_ssl_version(candidate: Union[None, int, str]) -> int:
     if isinstance(candidate, str):
         res = getattr(ssl, candidate, None)
         if res is None:
-            res = getattr(ssl, "PROTOCOL_" + candidate)
+            res = getattr(ssl, f"PROTOCOL_{candidate}")
         return cast(int, res)
 
     return candidate
@@ -329,34 +329,30 @@ def create_urllib3_context(
 
     # This means 'ssl_version' was specified as an exact value.
     if ssl_version not in (None, PROTOCOL_TLS, PROTOCOL_TLS_CLIENT):
-        # Disallow setting 'ssl_version' and 'ssl_minimum|maximum_version'
-        # to avoid conflicts.
         if ssl_minimum_version is not None or ssl_maximum_version is not None:
             raise ValueError(
                 "Can't specify both 'ssl_version' and either "
                 "'ssl_minimum_version' or 'ssl_maximum_version'"
             )
 
-        # 'ssl_version' is deprecated and will be removed in the future.
-        else:
-            # Use 'ssl_minimum_version' and 'ssl_maximum_version' instead.
-            ssl_minimum_version = _SSL_VERSION_TO_TLS_VERSION.get(
-                ssl_version, TLSVersion.MINIMUM_SUPPORTED
-            )
-            ssl_maximum_version = _SSL_VERSION_TO_TLS_VERSION.get(
-                ssl_version, TLSVersion.MAXIMUM_SUPPORTED
-            )
+        # Use 'ssl_minimum_version' and 'ssl_maximum_version' instead.
+        ssl_minimum_version = _SSL_VERSION_TO_TLS_VERSION.get(
+            ssl_version, TLSVersion.MINIMUM_SUPPORTED
+        )
+        ssl_maximum_version = _SSL_VERSION_TO_TLS_VERSION.get(
+            ssl_version, TLSVersion.MAXIMUM_SUPPORTED
+        )
 
-            # This warning message is pushing users to use 'ssl_minimum_version'
-            # instead of both min/max. Best practice is to only set the minimum version and
-            # keep the maximum version to be it's default value: 'TLSVersion.MAXIMUM_SUPPORTED'
-            warnings.warn(
-                "'ssl_version' option is deprecated and will be "
-                "removed in a future release of urllib3 2.x. Instead "
-                "use 'ssl_minimum_version'",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
+        # This warning message is pushing users to use 'ssl_minimum_version'
+        # instead of both min/max. Best practice is to only set the minimum version and
+        # keep the maximum version to be it's default value: 'TLSVersion.MAXIMUM_SUPPORTED'
+        warnings.warn(
+            "'ssl_version' option is deprecated and will be "
+            "removed in a future release of urllib3 2.x. Instead "
+            "use 'ssl_minimum_version'",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
 
     # PROTOCOL_TLS is deprecated in Python 3.10 so we always use PROTOCOL_TLS_CLIENT
     context = SSLContext(PROTOCOL_TLS_CLIENT)
@@ -410,13 +406,8 @@ def create_urllib3_context(
     # check_hostname=True, verify_mode=NONE/OPTIONAL.
     # We always set 'check_hostname=False' for pyOpenSSL so we rely on our own
     # 'ssl.match_hostname()' implementation.
-    if cert_reqs == ssl.CERT_REQUIRED and not IS_PYOPENSSL:
-        context.verify_mode = cert_reqs
-        context.check_hostname = True
-    else:
-        context.check_hostname = False
-        context.verify_mode = cert_reqs
-
+    context.check_hostname = cert_reqs == ssl.CERT_REQUIRED and not IS_PYOPENSSL
+    context.verify_mode = cert_reqs
     try:
         context.hostname_checks_common_name = False
     except AttributeError:
@@ -425,8 +416,7 @@ def create_urllib3_context(
     # Enable logging of TLS session keys via defacto standard environment variable
     # 'SSLKEYLOGFILE', if the feature is available (Python 3.8+). Skip empty values.
     if hasattr(context, "keylog_filename"):
-        sslkeylogfile = os.environ.get("SSLKEYLOGFILE")
-        if sslkeylogfile:
+        if sslkeylogfile := os.environ.get("SSLKEYLOGFILE"):
             context.keylog_filename = sslkeylogfile
 
     return context
@@ -554,8 +544,7 @@ def ssl_wrap_socket(
             SNIMissingWarning,
         )
 
-    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
-    return ssl_sock
+    return _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
 
 
 def is_ipaddress(hostname: Union[str, bytes]) -> bool:

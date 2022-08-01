@@ -53,9 +53,7 @@ class TestChunkedTransfer(SocketDummyServerTestCase):
             lines = body.split(b"\r\n")
             # Empty chunks should have been skipped, as this could not be distinguished
             # from terminating the transmission
-            for i, chunk in enumerate(
-                [c.decode() if isinstance(c, bytes) else c for c in chunks if c]
-            ):
+            for i, chunk in enumerate(c.decode() if isinstance(c, bytes) else c for c in chunks if c):
                 assert lines[i * 2] == hex(len(chunk))[2:].encode("utf-8")
                 assert lines[i * 2 + 1] == chunk.encode("utf-8")
 

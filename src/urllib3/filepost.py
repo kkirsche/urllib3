@@ -34,11 +34,7 @@ def iter_field_objects(fields: _TYPE_FIELDS) -> Iterable[RequestField]:
     """
     iterable: Iterable[Union[RequestField, Tuple[str, _TYPE_FIELD_VALUE_TUPLE]]]
 
-    if isinstance(fields, Mapping):
-        iterable = fields.items()
-    else:
-        iterable = fields
-
+    iterable = fields.items() if isinstance(fields, Mapping) else fields
     for field in iterable:
         if isinstance(field, RequestField):
             yield field

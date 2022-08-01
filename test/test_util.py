@@ -220,20 +220,20 @@ class TestUtil:
         actual_normalized_url = parse_url(url).url
         assert actual_normalized_url == expected_normalized_url
 
-    @pytest.mark.parametrize("char", [chr(i) for i in range(0x00, 0x21)] + ["\x7F"])
+    @pytest.mark.parametrize("char", [chr(i) for i in range(0x21)] + ["\x7F"])
     def test_control_characters_are_percent_encoded(self, char: str) -> None:
-        percent_char = "%" + (hex(ord(char))[2:].zfill(2).upper())
+        percent_char = f"%{hex(ord(char))[2:].zfill(2).upper()}"
         url = parse_url(
             f"http://user{char}@example.com/path{char}?query{char}#fragment{char}"
         )
 
         assert url == Url(
             "http",
-            auth="user" + percent_char,
+            auth=f"user{percent_char}",
             host="example.com",
-            path="/path" + percent_char,
-            query="query" + percent_char,
-            fragment="fragment" + percent_char,
+            path=f"/path{percent_char}",
+            query=f"query{percent_char}",
+            fragment=f"fragment{percent_char}",
         )
 
     parse_url_host_map = [

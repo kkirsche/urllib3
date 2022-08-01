@@ -331,8 +331,5 @@ class ConnectionMarker:
 
     @classmethod
     def _get_socket_mark(cls, sock: socket.socket, server: bool) -> bytes:
-        if server:
-            port = sock.getpeername()[1]
-        else:
-            port = sock.getsockname()[1]
+        port = sock.getpeername()[1] if server else sock.getsockname()[1]
         return cls.MARK_FORMAT % (port,)

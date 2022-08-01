@@ -480,9 +480,7 @@ class TestResponse:
         resp = HTTPResponse(fp, preload_content=False)
         stream = resp.stream(2, decode_content=False)
 
-        position = 0
-
-        position += len(next(stream))
+        position = 0 + len(next(stream))
         assert 2 == position
         assert position == resp.tell()
 
@@ -535,6 +533,8 @@ class TestResponse:
         # part-way through streaming compressed content.
         NUMBER_OF_READS = 10
 
+
+
         class MockCompressedDataReading(BytesIO):
             """
             A BytesIO-like reader returning ``payload`` in ``NUMBER_OF_READS``
@@ -551,9 +551,8 @@ class TestResponse:
 
             def read(self, _: int) -> bytes:  # type: ignore[override]
                 # Amount is unused.
-                if len(self.payloads) > 0:
-                    return self.payloads.pop(0)
-                return b""
+                return self.payloads.pop(0) if len(self.payloads) > 0 else b""
+
 
         uncompressed_data = zlib.decompress(ZLIB_PAYLOAD)
 
@@ -955,10 +954,7 @@ class TestResponse:
         ],
     )
     def test__iter__(self, payload: bytes, expected_stream: List[bytes]) -> None:
-        actual_stream = []
-        for chunk in HTTPResponse(BytesIO(payload), preload_content=False):
-            actual_stream.append(chunk)
-
+        actual_stream = list(HTTPResponse(BytesIO(payload), preload_content=False))
         assert actual_stream == expected_stream
 
     def test__iter__decode_content(self) -> None:
@@ -1098,9 +1094,7 @@ class MockChunkedInvalidChunkLength(MockChunkedEncodingResponse):
 class MockChunkedEncodingWithoutCRLFOnEnd(MockChunkedEncodingResponse):
     def _encode_chunk(self, chunk: bytes) -> bytes:
         return "{:X}\r\n{}{}".format(
-            len(chunk),
-            chunk.decode(),
-            "\r\n" if len(chunk) > 0 else "",
+            len(chunk), chunk.decode(), "\r\n" if chunk else ""
         ).encode()
 
 

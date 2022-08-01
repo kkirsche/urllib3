@@ -147,13 +147,9 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
     ) -> None:
         host, port = get_unreachable_address()
         with proxy_from_url(
-            f"{proxy_scheme}://{host}:{port}/", retries=1, timeout=LONG_TIMEOUT
-        ) as http:
-            if target_scheme == "https":
-                target_url = self.https_url
-            else:
-                target_url = self.http_url
-
+                f"{proxy_scheme}://{host}:{port}/", retries=1, timeout=LONG_TIMEOUT
+            ) as http:
+            target_url = self.https_url if target_scheme == "https" else self.http_url
             with pytest.raises(MaxRetryError) as e:
                 http.request("GET", f"{target_url}/")
             assert type(e.value.reason) == ProxyError
@@ -410,19 +406,19 @@ class TestHTTPProxyManager(HTTPDummyProxyTestCase):
 
     def test_proxy_pooling(self) -> None:
         with proxy_from_url(self.proxy_url, cert_reqs="NONE") as http:
-            for x in range(2):
+            for _ in range(2):
                 http.urlopen("GET", self.http_url)
             assert len(http.pools) == 1
 
-            for x in range(2):
+            for _ in range(2):
                 http.urlopen("GET", self.http_url_alt)
             assert len(http.pools) == 1
 
-            for x in range(2):
+            for _ in range(2):
                 http.urlopen("GET", self.https_url)
             assert len(http.pools) == 2
 
-            for x in range(2):
+            for _ in range(2):
                 http.urlopen("GET", self.https_url_alt)
             assert len(http.pools) == 3
 
@@ -661,7 +657,7 @@ class TestHTTPSProxyVerification:
         test_url = "testing.com"
         with proxy_from_url(bad_proxy_url, ca_certs=bad_server.ca_certs) as https:
             with pytest.raises(MaxRetryError) as e:
-                https.request("GET", "http://%s/" % test_url)
+                https.request("GET", f"http://{test_url}/")
             assert isinstance(e.value.reason, ProxyError)
 
             ssl_error = e.value.reason.original_error
@@ -671,7 +667,7 @@ class TestHTTPSProxyVerification:
             ) or "Hostname mismatch" in str(ssl_error)
 
             with pytest.raises(MaxRetryError) as e:
-                https.request("GET", "https://%s/" % test_url)
+                https.request("GET", f"https://{test_url}/")
             assert isinstance(e.value.reason, ProxyError)
 
             ssl_error = e.value.reason.original_error
@@ -737,7 +733,7 @@ class TestHTTPSProxyVerification:
         # but also has it enabled by default so we need to handle that.
         except AttributeError:
             pass
-        if getattr(proxy_ctx, "hostname_checks_common_name", False) is not True:
+        if not getattr(proxy_ctx, "hostname_checks_common_name", False):
             pytest.skip("Test requires 'SSLContext.hostname_checks_common_name=True'")
 
         with proxy_from_url(

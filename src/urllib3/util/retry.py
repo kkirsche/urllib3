@@ -241,25 +241,27 @@ class Retry:
         )
 
     def new(self, **kw: Any) -> "Retry":
-        params = dict(
-            total=self.total,
-            connect=self.connect,
-            read=self.read,
-            redirect=self.redirect,
-            status=self.status,
-            other=self.other,
-            allowed_methods=self.allowed_methods,
-            status_forcelist=self.status_forcelist,
-            backoff_factor=self.backoff_factor,
-            backoff_max=self.backoff_max,
-            raise_on_redirect=self.raise_on_redirect,
-            raise_on_status=self.raise_on_status,
-            history=self.history,
-            remove_headers_on_redirect=self.remove_headers_on_redirect,
-            respect_retry_after_header=self.respect_retry_after_header,
+        params = (
+            dict(
+                total=self.total,
+                connect=self.connect,
+                read=self.read,
+                redirect=self.redirect,
+                status=self.status,
+                other=self.other,
+                allowed_methods=self.allowed_methods,
+                status_forcelist=self.status_forcelist,
+                backoff_factor=self.backoff_factor,
+                backoff_max=self.backoff_max,
+                raise_on_redirect=self.raise_on_redirect,
+                raise_on_status=self.raise_on_status,
+                history=self.history,
+                remove_headers_on_redirect=self.remove_headers_on_redirect,
+                respect_retry_after_header=self.respect_retry_after_header,
+            )
+            | kw
         )
 
-        params.update(kw)
         return type(self)(**params)  # type: ignore[arg-type]
 
     @classmethod
@@ -320,14 +322,10 @@ class Retry:
 
         retry_after = response.getheader("Retry-After")
 
-        if retry_after is None:
-            return None
-
-        return self.parse_retry_after(retry_after)
+        return None if retry_after is None else self.parse_retry_after(retry_after)
 
     def sleep_for_retry(self, response: "HTTPResponse") -> bool:
-        retry_after = self.get_retry_after(response)
-        if retry_after:
+        if retry_after := self.get_retry_after(response):
             time.sleep(retry_after)
             return True
 
@@ -349,8 +347,7 @@ class Retry:
         """
 
         if self.respect_retry_after_header and response:
-            slept = self.sleep_for_retry(response)
-            if slept:
+            if slept := self.sleep_for_retry(response):
                 return
 
         self._sleep_backoff()
@@ -373,9 +370,7 @@ class Retry:
         """Checks if a given HTTP method should be retried upon, depending if
         it is included in the allowed_methods
         """
-        if self.allowed_methods and method.upper() not in self.allowed_methods:
-            return False
-        return True
+        return not self.allowed_methods or method.upper() in self.allowed_methods
 
     def is_retry(
         self, method: str, status_code: int, has_retry_after: bool = False
@@ -413,10 +408,7 @@ class Retry:
             )
             if x
         ]
-        if not retry_counts:
-            return False
-
-        return min(retry_counts) < 0
+        return min(retry_counts) < 0 if retry_counts else False
 
     def increment(
         self,
@@ -478,8 +470,7 @@ class Retry:
             if redirect is not None:
                 redirect -= 1
             cause = "too many redirects"
-            response_redirect_location = response.get_redirect_location()
-            if response_redirect_location:
+            if response_redirect_location := response.get_redirect_location():
                 redirect_location = response_redirect_location
             status = response.status
 

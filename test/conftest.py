@@ -46,12 +46,11 @@ class ServerConfig(NamedTuple):
 def _write_cert_to_dir(
     cert: trustme.LeafCert, tmpdir: Path, file_prefix: str = "server"
 ) -> Dict[str, str]:
-    cert_path = str(tmpdir / ("%s.pem" % file_prefix))
-    key_path = str(tmpdir / ("%s.key" % file_prefix))
+    cert_path = str(tmpdir / f"{file_prefix}.pem")
+    key_path = str(tmpdir / f"{file_prefix}.key")
     cert.private_key_pem.write_to_path(key_path)
     cert.cert_chain_pems[0].write_to_path(cert_path)
-    certs = {"keyfile": key_path, "certfile": cert_path}
-    return certs
+    return {"keyfile": key_path, "certfile": cert_path}
 
 
 @contextlib.contextmanager

@@ -154,11 +154,7 @@ def ssl_options_to_context(  # type: ignore[no-untyped-def]
     """Return an equivalent SSLContext based on ssl.wrap_socket args."""
     ssl_version = resolve_ssl_version(ssl_version)
     cert_none = resolve_cert_reqs("CERT_NONE")
-    if cert_reqs is None:
-        cert_reqs = cert_none
-    else:
-        cert_reqs = resolve_cert_reqs(cert_reqs)
-
+    cert_reqs = cert_none if cert_reqs is None else resolve_cert_reqs(cert_reqs)
     ctx = ssl.SSLContext(ssl_version)
     ctx.load_cert_chain(certfile, keyfile)
     ctx.verify_mode = cert_reqs

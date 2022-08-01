@@ -95,7 +95,7 @@ class RequestMethods:
         if json is not None:
             if headers is None:
                 headers = self.headers.copy()  # type: ignore
-            if not ("content-type" in map(str.lower, headers.keys())):
+            if "content-type" not in map(str.lower, headers.keys()):
                 headers["Content-Type"] = "application/json"  # type: ignore
 
             body = _json.dumps(json, separators=(",", ":"), ensure_ascii=False).encode(
@@ -134,10 +134,10 @@ class RequestMethods:
             headers = self.headers
 
         extra_kw: Dict[str, Any] = {"headers": headers}
-        extra_kw.update(urlopen_kw)
+        extra_kw |= urlopen_kw
 
         if fields:
-            url += "?" + urlencode(fields)
+            url += f"?{urlencode(fields)}"
 
         return self.urlopen(method, url, **extra_kw)
 
@@ -211,6 +211,6 @@ class RequestMethods:
             extra_kw["body"] = body
             extra_kw["headers"].setdefault("Content-Type", content_type)
 
-        extra_kw.update(urlopen_kw)
+        extra_kw |= urlopen_kw
 
         return self.urlopen(method, url, **extra_kw)

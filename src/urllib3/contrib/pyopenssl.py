@@ -234,9 +234,7 @@ def _dnsname_to_stdlib(name: str) -> Optional[str]:
         return name
 
     encoded_name = idna_encode(name)
-    if encoded_name is None:
-        return None
-    return encoded_name.decode("utf-8")
+    return None if encoded_name is None else encoded_name.decode("utf-8")
 
 
 def get_subj_alt_name(peer_cert: "CRL") -> List[Tuple[str, str]]:
@@ -403,18 +401,18 @@ class WrappedSocket:
             self._io_refs -= 1
 
     def getpeercert(self, binary_form: bool = False) -> Optional[Dict[str, List[Any]]]:
-        x509 = self.connection.get_peer_certificate()
+        if x509 := self.connection.get_peer_certificate():
+            return (
+                OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)
+                if binary_form
+                else {
+                    "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore[dict-item]
+                    "subjectAltName": get_subj_alt_name(x509),
+                }
+            )
 
-        if not x509:
+        else:
             return x509  # type: ignore[no-any-return]
-
-        if binary_form:
-            return OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, x509)  # type: ignore[no-any-return]
-
-        return {
-            "subject": ((("commonName", x509.get_subject().CN),),),  # type: ignore[dict-item]
-            "subjectAltName": get_subj_alt_name(x509),
-        }
 
     def version(self) -> str:
         return self.connection.get_protocol_version_name()  # type: ignore[no-any-return]

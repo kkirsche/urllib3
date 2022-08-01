@@ -197,7 +197,7 @@ class TestConnection:
         # When this test fails update urllib3.connection.RECENT_DATE
         # according to the rules defined in that file.
         two_years = datetime.timedelta(days=365 * 2)
-        assert RECENT_DATE > (datetime.datetime.today() - two_years).date()
+        assert RECENT_DATE > (datetime.datetime.now() - two_years).date()
 
     def test_HTTPSConnection_default_socket_options(self) -> None:
         conn = HTTPSConnection("not.a.real.host", port=443)
@@ -215,5 +215,5 @@ class TestConnection:
     )
     def test_wrap_proxy_error(self, proxy_scheme: str, err_part: str) -> None:
         new_err = _wrap_proxy_error(HTTPError("unknown protocol"), proxy_scheme)
-        assert isinstance(new_err, ProxyError) is True
+        assert isinstance(new_err, ProxyError)
         assert err_part in new_err.args[0]

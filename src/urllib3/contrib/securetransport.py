@@ -223,9 +223,10 @@ def _read_callback(
 
         try:
             while read_count < requested_length:
-                if timeout is None or timeout >= 0:
-                    if not util.wait_for_read(base_socket, timeout):
-                        raise OSError(errno.EAGAIN, "timed out")
+                if (
+                    timeout is None or timeout >= 0
+                ) and not util.wait_for_read(base_socket, timeout):
+                    raise OSError(errno.EAGAIN, "timed out")
 
                 remaining = requested_length - read_count
                 buffer = (ctypes.c_char * remaining).from_address(
@@ -242,16 +243,13 @@ def _read_callback(
 
             if error is not None and error != errno.EAGAIN:
                 data_length_pointer[0] = read_count
-                if error == errno.ECONNRESET or error == errno.EPIPE:
+                if error in [errno.ECONNRESET, errno.EPIPE]:
                     return SecurityConst.errSSLClosedAbort
                 raise
 
         data_length_pointer[0] = read_count
 
-        if read_count != requested_length:
-            return SecurityConst.errSSLWouldBlock
-
-        return 0
+        return SecurityConst.errSSLWouldBlock if read_count != requested_length else 0
     except Exception as e:
         if wrapped_socket is not None:
             wrapped_socket._exception = e
@@ -281,9 +279,10 @@ def _write_callback(
 
         try:
             while sent < bytes_to_write:
-                if timeout is None or timeout >= 0:
-                    if not util.wait_for_write(base_socket, timeout):
-                        raise OSError(errno.EAGAIN, "timed out")
+                if (
+                    timeout is None or timeout >= 0
+                ) and not util.wait_for_write(base_socket, timeout):
+                    raise OSError(errno.EAGAIN, "timed out")
                 chunk_sent = base_socket.send(data)
                 sent += chunk_sent
 
@@ -295,16 +294,13 @@ def _write_callback(
 
             if error is not None and error != errno.EAGAIN:
                 data_length_pointer[0] = sent
-                if error == errno.ECONNRESET or error == errno.EPIPE:
+                if error in [errno.ECONNRESET, errno.EPIPE]:
                     return SecurityConst.errSSLClosedAbort
                 raise
 
         data_length_pointer[0] = sent
 
-        if sent != bytes_to_write:
-            return SecurityConst.errSSLWouldBlock
-
-        return 0
+        return SecurityConst.errSSLWouldBlock if sent != bytes_to_write else 0
     except Exception as e:
         if wrapped_socket is not None:
             wrapped_socket._exception = e

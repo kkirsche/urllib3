@@ -39,7 +39,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f"multipart/form-data; boundary={str(BOUNDARY)}"
 
     def test_filename(self) -> None:
         fields = [("k", ("somename", b"v"))]
@@ -56,7 +56,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f"multipart/form-data; boundary={str(BOUNDARY)}"
 
     def test_textplain(self) -> None:
         fields = [("k", ("somefile.txt", b"v"))]
@@ -73,7 +73,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f"multipart/form-data; boundary={str(BOUNDARY)}"
 
     def test_explicit(self) -> None:
         fields = [("k", ("somefile.txt", b"v", "image/jpeg"))]
@@ -90,7 +90,7 @@ class TestMultipartEncoding:
 
         assert encoded == expected
 
-        assert content_type == "multipart/form-data; boundary=" + str(BOUNDARY)
+        assert content_type == f"multipart/form-data; boundary={str(BOUNDARY)}"
 
     def test_request_fields(self) -> None:
         fields = [

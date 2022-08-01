@@ -1614,8 +1614,7 @@ class TestHeaders(SocketDummyServerTestCase):
             "Accept-Encoding": "identity",
             "Host": f"{self.host}:{self.port}",
             "User-Agent": _get_default_user_agent(),
-        }
-        expected_headers.update(headers)
+        } | headers
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
@@ -1628,8 +1627,7 @@ class TestHeaders(SocketDummyServerTestCase):
         expected_headers = {
             "Accept-Encoding": "identity",
             "Host": f"{self.host}:{self.port}",
-        }
-        expected_headers.update(headers)
+        } | headers
 
         with HTTPConnectionPool(self.host, self.port, retries=False) as pool:
             pool.request("GET", "/", headers=HTTPHeaderDict(headers))
@@ -1658,7 +1656,7 @@ class TestHeaders(SocketDummyServerTestCase):
     def test_request_host_header_ignores_fqdn_dot(self) -> None:
         self.start_parsing_handler()
 
-        with HTTPConnectionPool(self.host + ".", self.port, retries=False) as pool:
+        with HTTPConnectionPool(f"{self.host}.", self.port, retries=False) as pool:
             pool.request("GET", "/")
             self.assert_header_received(
                 self.received_headers, "Host", f"{self.host}:{self.port}"
@@ -1794,12 +1792,13 @@ class TestBrokenHeaders(SocketDummyServerTestCase):
                     "Failed to parse headers" in record.msg
                     and isinstance(record.args, tuple)
                     and pool._absolute_url("/") == record.args[0]
-                ):
-                    if (
+                ) and (
+                    (
                         unparsed_data_check is None
                         or unparsed_data_check in record.getMessage()
-                    ):
-                        return
+                    )
+                ):
+                    return
             pytest.fail("Missing log about unparsed headers")
 
     def test_header_without_name(self) -> None:
@@ -1957,8 +1956,8 @@ class TestBadContentLength(SocketDummyServerTestCase):
             head_response = conn.request(
                 "HEAD", url="/", preload_content=False, enforce_content_length=True
             )
-            data = [chunk for chunk in head_response.stream(1)]
-            assert len(data) == 0
+            data = list(head_response.stream(1))
+            assert not data
 
             done_event.set()
 
@@ -2145,7 +2144,7 @@ class TestContentFraming(SocketDummyServerTestCase):
             body = io.BytesIO(b"x" * 10)
             body.seek(0, 0)
         else:
-            if chunked is False:
+            if not chunked:
                 pytest.skip("urllib3 uses Content-Length in this case")
             body = b"x" * 10
 

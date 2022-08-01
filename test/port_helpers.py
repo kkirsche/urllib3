@@ -89,12 +89,14 @@ def bind_port(sock: socket.socket, host: str = HOST) -> int:
     """
 
     if sock.family == socket.AF_INET and sock.type == socket.SOCK_STREAM:
-        if hasattr(socket, "SO_REUSEADDR"):
-            if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) == 1:
-                raise ValueError(
-                    "tests should never set the SO_REUSEADDR "
-                    "socket option on TCP/IP sockets!"
-                )
+        if (
+            hasattr(socket, "SO_REUSEADDR")
+            and sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) == 1
+        ):
+            raise ValueError(
+                "tests should never set the SO_REUSEADDR "
+                "socket option on TCP/IP sockets!"
+            )
         if hasattr(socket, "SO_REUSEPORT"):
             try:
                 if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 1:
