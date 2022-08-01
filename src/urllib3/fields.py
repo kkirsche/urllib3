@@ -29,9 +29,7 @@ def guess_content_type(
     :param default:
         If no "Content-Type" can be guessed, default to `default`.
     """
-    if filename:
-        return mimetypes.guess_type(filename)[0] or default
-    return default
+    return mimetypes.guess_type(filename)[0] or default if filename else default
 
 
 def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
@@ -67,7 +65,7 @@ def format_header_param_rfc2231(name: str, value: Union[str, bytes]) -> str:
     if isinstance(value, bytes):
         value = value.decode("utf-8")
 
-    if not any(ch in value for ch in '"\\\r\n'):
+    if all(ch not in value for ch in '"\\\r\n'):
         result = f'{name}="{value}"'
         try:
             result.encode("ascii")
@@ -286,15 +284,16 @@ class RequestField:
         """
         iterable: Iterable[Tuple[str, Optional[_TYPE_FIELD_VALUE]]]
 
-        parts = []
         if isinstance(header_parts, dict):
             iterable = header_parts.items()
         else:
             iterable = header_parts
 
-        for name, value in iterable:
-            if value is not None:
-                parts.append(self._render_part(name, value))
+        parts = [
+            self._render_part(name, value)
+            for name, value in iterable
+            if value is not None
+        ]
 
         return "; ".join(parts)
 
@@ -302,17 +301,16 @@ class RequestField:
         """
         Renders the headers for this request field.
         """
-        lines = []
-
         sort_keys = ["Content-Disposition", "Content-Type", "Content-Location"]
-        for sort_key in sort_keys:
-            if self.headers.get(sort_key, False):
-                lines.append(f"{sort_key}: {self.headers[sort_key]}")
+        lines = [
+            f"{sort_key}: {self.headers[sort_key]}"
+            for sort_key in sort_keys
+            if self.headers.get(sort_key, False)
+        ]
 
         for header_name, header_value in self.headers.items():
-            if header_name not in sort_keys:
-                if header_value:
-                    lines.append(f"{header_name}: {header_value}")
+            if header_name not in sort_keys and header_value:
+                lines.append(f"{header_name}: {header_value}")
 
         lines.append("\r\n")
         return "\r\n".join(lines)

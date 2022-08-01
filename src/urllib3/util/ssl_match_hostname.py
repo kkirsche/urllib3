@@ -43,12 +43,13 @@ def _dnsname_match(
         # policy among SSL implementations showed it to be a
         # reasonable choice.
         raise CertificateError(
-            "too many wildcards in certificate DNS name: " + repr(dn)
+            f"too many wildcards in certificate DNS name: {repr(dn)}"
         )
+
 
     # speed up common case w/o wildcards
     if not wildcards:
-        return bool(dn.lower() == hostname.lower())
+        return dn.lower() == hostname.lower()
 
     # RFC 6125, section 6.4.3, subitem 1.
     # The client SHOULD NOT attempt to match a presented identifier in which
@@ -68,9 +69,7 @@ def _dnsname_match(
         pats.append(re.escape(leftmost).replace(r"\*", "[^.]*"))
 
     # add the remaining fragments, ignore any wildcards
-    for frag in remainder:
-        pats.append(re.escape(frag))
-
+    pats.extend(re.escape(frag) for frag in remainder)
     pat = re.compile(r"\A" + r"\.".join(pats) + r"\Z", re.IGNORECASE)
     return pat.match(hostname)
 
@@ -87,7 +86,7 @@ def _ipaddress_match(ipname: str, host_ip: Union[IPv4Address, IPv6Address]) -> b
     # OpenSSL may add a trailing newline to a subjectAltName's IP address
     # Divergence from upstream: ipaddress can't handle byte str
     ip = ipaddress.ip_address(ipname.rstrip())
-    return bool(ip.packed == host_ip.packed)
+    return ip.packed == host_ip.packed
 
 
 def match_hostname(

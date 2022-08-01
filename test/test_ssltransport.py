@@ -119,7 +119,7 @@ class SingleTLSLayerTestCase(SocketDummyServerTestCase):
                 validate_request(request)
                 ssock.send(sample_response())
 
-        chosen_handler = handler if handler else socket_handler
+        chosen_handler = handler or socket_handler
         self._start_server(chosen_handler)
 
     @pytest.mark.timeout(PER_TEST_TIMEOUT)

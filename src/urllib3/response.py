@@ -162,9 +162,7 @@ if brotli is not None:
                 setattr(self, "decompress", self._obj.process)
 
         def flush(self) -> bytes:
-            if hasattr(self._obj, "flush"):
-                return self._obj.flush()  # type: ignore[no-any-return]
-            return b""
+            return self._obj.flush() if hasattr(self._obj, "flush") else b""
 
 
 if zstd is not None:
@@ -174,9 +172,7 @@ if zstd is not None:
             self._obj = zstd.ZstdDecompressor().decompressobj()
 
         def decompress(self, data: bytes) -> bytes:
-            if not data:
-                return b""
-            return self._obj.decompress(data)  # type: ignore[no-any-return]
+            return self._obj.decompress(data) if data else b""
 
         def flush(self) -> bytes:
             ret = self._obj.flush()
@@ -349,12 +345,11 @@ class BaseHTTPResponse(io.IOBase):
             if content_encoding in self.CONTENT_DECODERS:
                 self._decoder = _get_decoder(content_encoding)
             elif "," in content_encoding:
-                encodings = [
+                if encodings := [
                     e.strip()
                     for e in content_encoding.split(",")
                     if e.strip() in self.CONTENT_DECODERS
-                ]
-                if encodings:
+                ]:
                     self._decoder = _get_decoder(content_encoding)
 
     def _decode(
@@ -398,9 +393,8 @@ class BaseHTTPResponse(io.IOBase):
         temp = self.read(len(b))
         if len(temp) == 0:
             return 0
-        else:
-            b[: len(temp)] = temp
-            return len(temp)
+        b[: len(temp)] = temp
+        return len(temp)
 
     # Compatibility methods for http.client.HTTPResponse
     def getheaders(self) -> List[Tuple[str, str]]:
@@ -535,10 +529,7 @@ class HTTPResponse(BaseHTTPResponse):
         if self._body:
             return self._body  # type: ignore[return-value]
 
-        if self._fp:
-            return self.read(cache_content=True)
-
-        return None  # type: ignore[return-value]
+        return self.read(cache_content=True) if self._fp else None
 
     @property
     def connection(self) -> Optional[HTTPConnection]:
@@ -606,7 +597,7 @@ class HTTPResponse(BaseHTTPResponse):
             status = 0
 
         # Check for responses that shouldn't include a body
-        if status in (204, 304) or 100 <= status < 200 or request_method == "HEAD":
+        if status in {204, 304} or 100 <= status < 200 or request_method == "HEAD":
             length = 0
 
         return length
@@ -684,36 +675,34 @@ class HTTPResponse(BaseHTTPResponse):
         assert self._fp
         c_int_max = 2**31 - 1
         if (
-            (
-                (amt and amt > c_int_max)
-                or (self.length_remaining and self.length_remaining > c_int_max)
-            )
-            and not util.IS_SECURETRANSPORT
-            and (util.IS_PYOPENSSL or sys.version_info < (3, 10))
+            (not amt or amt <= c_int_max)
+            and (not self.length_remaining or self.length_remaining <= c_int_max)
+            or util.IS_SECURETRANSPORT
+            or not util.IS_PYOPENSSL
+            and sys.version_info >= (3, 10)
         ):
-            buffer = io.BytesIO()
-            # Besides `max_chunk_amt` being a maximum chunk size, it
-            # affects memory overhead of reading a response by this
-            # method in CPython.
-            # `c_int_max` equal to 2 GiB - 1 byte is the actual maximum
-            # chunk size that does not lead to an overflow error, but
-            # 256 MiB is a compromise.
-            max_chunk_amt = 2**28
-            while amt is None or amt != 0:
-                if amt is not None:
-                    chunk_amt = min(amt, max_chunk_amt)
-                    amt -= chunk_amt
-                else:
-                    chunk_amt = max_chunk_amt
-                data = self._fp.read(chunk_amt)
-                if not data:
-                    break
-                buffer.write(data)
-                del data  # to reduce peak memory usage by `max_chunk_amt`.
-            return buffer.getvalue()
-        else:
             # StringIO doesn't like amt=None
             return self._fp.read(amt) if amt is not None else self._fp.read()
+        buffer = io.BytesIO()
+        # Besides `max_chunk_amt` being a maximum chunk size, it
+        # affects memory overhead of reading a response by this
+        # method in CPython.
+        # `c_int_max` equal to 2 GiB - 1 byte is the actual maximum
+        # chunk size that does not lead to an overflow error, but
+        # 256 MiB is a compromise.
+        max_chunk_amt = 2**28
+        while amt is None or amt != 0:
+            if amt is not None:
+                chunk_amt = min(amt, max_chunk_amt)
+                amt -= chunk_amt
+            else:
+                chunk_amt = max_chunk_amt
+            data = self._fp.read(chunk_amt)
+            if not data:
+                break
+            buffer.write(data)
+            del data  # to reduce peak memory usage by `max_chunk_amt`.
+        return buffer.getvalue()
 
     def read(
         self,
@@ -752,7 +741,7 @@ class HTTPResponse(BaseHTTPResponse):
         fp_closed = getattr(self._fp, "closed", False)
 
         with self._error_catcher():
-            data = self._fp_read(amt) if not fp_closed else b""
+            data = b"" if fp_closed else self._fp_read(amt)
             if amt is None:
                 flush_decoder = True
             else:
@@ -815,15 +804,11 @@ class HTTPResponse(BaseHTTPResponse):
             yield from self.read_chunked(amt, decode_content=decode_content)
         else:
             while not is_fp_closed(self._fp):
-                data = self.read(amt=amt, decode_content=decode_content)
-
-                if data:
+                if data := self.read(amt=amt, decode_content=decode_content):
                     yield data
 
     @classmethod
-    def from_httplib(
-        ResponseCls: Type["HTTPResponse"], r: _HttplibHTTPResponse, **response_kw: Any
-    ) -> "HTTPResponse":
+    def from_httplib(cls, r: _HttplibHTTPResponse, **response_kw: Any) -> "HTTPResponse":
         """
         Given an :class:`http.client.HTTPResponse` instance ``r``, return a
         corresponding :class:`urllib3.response.HTTPResponse` object.
@@ -836,16 +821,15 @@ class HTTPResponse(BaseHTTPResponse):
         if not isinstance(headers, HTTPHeaderDict):
             headers = HTTPHeaderDict(headers.items())  # type: ignore[assignment]
 
-        resp = ResponseCls(
+        return cls(
             body=r,
-            headers=headers,  # type: ignore[arg-type]
+            headers=headers,
             status=r.status,
             version=r.version,
             reason=r.reason,
             original_response=r,
-            **response_kw,
+            **response_kw
         )
-        return resp
 
     # Overrides from io.IOBase
     def close(self) -> None:
@@ -980,18 +964,13 @@ class HTTPResponse(BaseHTTPResponse):
                 if self.chunk_left == 0:
                     break
                 chunk = self._handle_chunk(amt)
-                decoded = self._decode(
+                if decoded := self._decode(
                     chunk, decode_content=decode_content, flush_decoder=False
-                )
-                if decoded:
+                ):
                     yield decoded
 
             if decode_content:
-                # On CPython and PyPy, we should never need to flush the
-                # decoder. However, on Jython we *might* need to, so
-                # lets defensively do it anyway.
-                decoded = self._flush_decoder()
-                if decoded:  # Platform-specific: Jython.
+                if decoded := self._flush_decoder():
                     yield decoded
 
             # Chunk content ends with \r\n: discard it.
@@ -1028,10 +1007,7 @@ class HTTPResponse(BaseHTTPResponse):
                 yield b"".join(buffer) + chunks[0] + b"\n"
                 for x in chunks[1:-1]:
                     yield x + b"\n"
-                if chunks[-1]:
-                    buffer = [chunks[-1]]
-                else:
-                    buffer = []
+                buffer = [chunks[-1]] if chunks[-1] else []
             else:
                 buffer.append(chunk)
         if buffer:

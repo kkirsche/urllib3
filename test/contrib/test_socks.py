@@ -169,7 +169,7 @@ def handle_socks5_negotiation(
     reserved = sock.recv(1)
     addr = _address_from_socket(sock)
     port_raw = _read_exactly(sock, 2)
-    port = (ord(port_raw[0:1]) << 8) + (ord(port_raw[1:2]))
+    port = (ord(port_raw[:1]) << 8) + (ord(port_raw[1:2]))
 
     # Check some basic stuff.
     assert received_version == SOCKS_VERSION_SOCKS5
@@ -201,7 +201,7 @@ def handle_socks4_negotiation(
     received_version = sock.recv(1)
     command = sock.recv(1)
     port_raw = _read_exactly(sock, 2)
-    port = (ord(port_raw[0:1]) << 8) + (ord(port_raw[1:2]))
+    port = (ord(port_raw[:1]) << 8) + (ord(port_raw[1:2]))
     addr_raw = _read_exactly(sock, 4)
     provided_username = _read_until(sock, b"\x00")[:-1]  # Strip trailing null.
 

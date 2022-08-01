@@ -272,9 +272,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         del self._container[key.lower()]
 
     def __contains__(self, key: object) -> bool:
-        if isinstance(key, str):
-            return key.lower() in self._container
-        return False
+        return key.lower() in self._container if isinstance(key, str) else False
 
     def setdefault(self, key: str, default: str = "") -> str:
         return super().setdefault(key, default)
@@ -338,7 +336,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             # key/value pair
             assert len(vals) >= 2
             if combine:
-                vals[-1] = vals[-1] + ", " + val
+                vals[-1] = f"{vals[-1]}, {val}"
             else:
                 vals.append(val)
 
@@ -351,7 +349,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
             raise TypeError(
                 f"extend() takes at most 1 positional arguments ({len(args)} given)"
             )
-        other = args[0] if len(args) >= 1 else ()
+        other = args[0] if args else ()
 
         if isinstance(other, HTTPHeaderDict):
             for key, val in other.iteritems():
@@ -391,11 +389,7 @@ class HTTPHeaderDict(MutableMapping[str, str]):
         try:
             vals = self._container[key.lower()]
         except KeyError:
-            if default is _Sentinel.not_passed:
-                # _DT is unbound; empty list is instance of List[str]
-                return []
-            # _DT is bound; default is instance of _DT
-            return default
+            return [] if default is _Sentinel.not_passed else default
         else:
             # _DT may or may not be bound; vals[1:] is instance of List[str], which
             # meets our external interface requirement of `Union[List[str], _DT]`.

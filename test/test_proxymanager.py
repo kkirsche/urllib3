@@ -33,7 +33,7 @@ class TestProxyManager:
             # Verify proxy with nonstandard port
             provided_headers = {"Accept": "application/json"}
             expected_headers = provided_headers.copy()
-            expected_headers.update({"Host": "pypi.org:8080"})
+            expected_headers["Host"] = "pypi.org:8080"
             url_with_port = "http://pypi.org:8080/project/urllib3/"
             headers = p._set_proxy_headers(url_with_port, provided_headers)
 

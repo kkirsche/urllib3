@@ -236,8 +236,8 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             "upload_param": "filefield",
             "upload_filename": "lolcat.txt",
             "filefield": ("lolcat.txt", data),
+            "upload_size": len(data),
         }
-        fields["upload_size"] = len(data)  # type: ignore
 
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
@@ -275,8 +275,9 @@ class TestConnectionPool(HTTPDummyServerTestCase):
             "upload_param": fieldname,
             "upload_filename": filename,
             fieldname: (filename, data),
+            "upload_size": size,
         }
-        fields["upload_size"] = size  # type: ignore
+
         with HTTPConnectionPool(self.host, self.port) as pool:
             r = pool.request("POST", "/upload", fields=fields)
             assert r.status == 200, r.data
@@ -529,7 +530,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
                 encode_multipart=True,
             )
 
-            chunks = [chunk for chunk in r]
+            chunks = list(r)
             assert chunks == [
                 b"--boundary\r\n",
                 b'Content-Disposition: form-data; name="hello"\r\n',
@@ -703,7 +704,7 @@ class TestConnectionPool(HTTPDummyServerTestCase):
     def test_invalid_method_not_allowed(self, char: str) -> None:
         with pytest.raises(ValueError):
             with HTTPConnectionPool(self.host, self.port) as pool:
-                pool.request("GET" + char, "/")
+                pool.request(f"GET{char}", "/")
 
     def test_percent_encode_invalid_target_chars(self) -> None:
         with HTTPConnectionPool(self.host, self.port) as pool:
@@ -1271,7 +1272,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
 
             t = time.time()
             timestamp = t + 2
-            r = pool.request("GET", "/redirect_after?date=" + str(timestamp))
+            r = pool.request("GET", f"/redirect_after?date={str(timestamp)}")
             assert r.status == 200
             delta = time.time() - t
             assert delta >= 1
@@ -1279,7 +1280,7 @@ class TestRetryAfter(HTTPDummyServerTestCase):
             # Retry-After is past
             t = time.time()
             timestamp = t - 1
-            r = pool.request("GET", "/redirect_after?date=" + str(timestamp))
+            r = pool.request("GET", f"/redirect_after?date={str(timestamp)}")
             delta = time.time() - t
             assert r.status == 200
             assert delta < 1

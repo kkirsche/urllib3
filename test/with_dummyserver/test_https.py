@@ -152,12 +152,7 @@ class TestHTTPS(HTTPSDummyServerTestCase):
 
     @resolvesLocalhostFQDN()
     def test_dotted_fqdn(self) -> None:
-        with HTTPSConnectionPool(
-            self.host + ".",
-            self.port,
-            ca_certs=DEFAULT_CA,
-            ssl_minimum_version=self.tls_version(),
-        ) as pool:
+        with HTTPSConnectionPool(f"{self.host}.", self.port, ca_certs=DEFAULT_CA, ssl_minimum_version=self.tls_version()) as pool:
             r = pool.request("GET", "/")
             assert r.status == 200, r.data
 

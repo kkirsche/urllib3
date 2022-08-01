@@ -257,10 +257,7 @@ class HTTPConnection(_HTTPConnection):
         skip_accept_encoding: bool = False,
     ) -> None:
         """"""
-        # Empty docstring because the indentation of CPython's implementation
-        # is broken but we don't want this method in our documentation.
-        match = _CONTAINS_CONTROL_CHAR_RE.search(method)
-        if match:
+        if match := _CONTAINS_CONTROL_CHAR_RE.search(method):
             raise ValueError(
                 f"Method cannot contain non-token characters {method!r} (found at least {match.group()!r})"
             )
@@ -311,24 +308,19 @@ class HTTPConnection(_HTTPConnection):
         if chunked:
             if "transfer-encoding" not in header_keys:
                 self.putheader("Transfer-Encoding", "chunked")
-        else:
-            # Detect whether a framing mechanism is already in use. If so
-            # we respect that value, otherwise we pick chunked vs content-length
-            # depending on the type of 'body'.
-            if "content-length" in header_keys:
-                chunked = False
-            elif "transfer-encoding" in header_keys:
-                chunked = True
+        elif "content-length" in header_keys:
+            chunked = False
+        elif "transfer-encoding" in header_keys:
+            chunked = True
 
-            # Otherwise we go off the recommendation of 'body_to_chunks()'.
+        else:
+            chunked = False
+            if content_length is None:
+                if chunks is not None:
+                    chunked = True
+                    self.putheader("Transfer-Encoding", "chunked")
             else:
-                chunked = False
-                if content_length is None:
-                    if chunks is not None:
-                        chunked = True
-                        self.putheader("Transfer-Encoding", "chunked")
-                else:
-                    self.putheader("Content-Length", str(content_length))
+                self.putheader("Content-Length", str(content_length))
 
         # Now that framing headers are out of the way we send all the other headers.
         if "user-agent" not in header_keys:

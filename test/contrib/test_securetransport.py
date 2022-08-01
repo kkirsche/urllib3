@@ -5,10 +5,8 @@ import ssl
 
 import pytest
 
-try:
+with contextlib.suppress(ImportError):
     from urllib3.contrib.securetransport import WrappedSocket
-except ImportError:
-    pass
 
 
 def setup_module() -> None:
@@ -21,12 +19,10 @@ def setup_module() -> None:
 
 
 def teardown_module() -> None:
-    try:
+    with contextlib.suppress(ImportError):
         from urllib3.contrib.securetransport import extract_from_urllib3
 
         extract_from_urllib3()
-    except ImportError:
-        pass
 
 
 from ..test_util import TestUtilSSL  # noqa: E402, F401

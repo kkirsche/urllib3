@@ -232,13 +232,12 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             self.port or "80",
         )
 
-        conn = self.ConnectionCls(
+        return self.ConnectionCls(
             host=self.host,
             port=self.port,
             timeout=self.timeout.connect_timeout,
             **self.conn_kw,
         )
-        return conn
 
     def _get_conn(self, timeout: Optional[float] = None) -> HTTPConnection:
         """
@@ -269,8 +268,6 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                     self,
                     "Pool is empty and a new connection can't be opened due to blocking mode.",
                 ) from None
-            pass  # Oh well, we'll create a new connection then
-
         # If this is a persistent connection, check if it got disconnected
         if conn and is_connection_dropped(conn):
             log.debug("Resetting dropped connection: %s", self.host)
@@ -405,16 +402,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
                 raise
 
-        # _validate_conn() starts the connection to an HTTPS proxy
-        # so we need to wrap errors with 'ProxyError' here too.
-        except (
-            OSError,
-            NewConnectionError,
-            TimeoutError,
-            BaseSSLError,
-            CertificateError,
-            SSLError,
-        ) as e:
+        except (OSError, TimeoutError, BaseSSLError, CertificateError, SSLError) as e:
             new_e: Exception = e
             if isinstance(e, (BaseSSLError, CertificateError)):
                 new_e = SSLError(e)
@@ -505,8 +493,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
 
         try:
             while True:
-                conn = old_pool.get(block=False)
-                if conn:
+                if conn := old_pool.get(block=False):
                     conn.close()
 
         except queue.Empty:
@@ -738,7 +725,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
             # the response doesn't need to know about the connection. Otherwise
             # it will also try to release it and we'll have a double-release
             # mess.
-            response_conn = conn if not release_conn else None
+            response_conn = None if release_conn else conn
 
             # Pass method to Response for length checking
             response_kw["request_method"] = method
@@ -837,9 +824,7 @@ class HTTPConnectionPool(ConnectionPool, RequestMethods):
                 **response_kw,
             )
 
-        # Handle redirect?
-        redirect_location = redirect and response.get_redirect_location()
-        if redirect_location:
+        if redirect_location := redirect and response.get_redirect_location():
             if response.status == 303:
                 method = "GET"
 

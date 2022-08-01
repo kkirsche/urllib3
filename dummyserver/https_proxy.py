@@ -38,9 +38,6 @@ def run_proxy(port: int, certs: Dict[str, Any] = DEFAULT_CERTS) -> None:
 
 
 if __name__ == "__main__":
-    port = 8443
-    if len(sys.argv) > 1:
-        port = int(sys.argv[1])
-
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8443
     print(f"Starting HTTPS proxy on port {port}")
     run_proxy(port)

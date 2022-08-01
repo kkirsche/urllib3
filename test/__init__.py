@@ -60,14 +60,7 @@ _TestFuncT = TypeVar("_TestFuncT", bound=Callable[..., Any])
 
 # We need a host that will not immediately close the connection with a TCP
 # Reset.
-if platform.system() == "Windows":
-    # Reserved loopback subnet address
-    TARPIT_HOST = "127.0.0.0"
-else:
-    # Reserved internet scoped address
-    # https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
-    TARPIT_HOST = "240.0.0.0"
-
+TARPIT_HOST = "127.0.0.0" if platform.system() == "Windows" else "240.0.0.0"
 # (Arguments for socket, is it IPv6 address?)
 VALID_SOURCE_ADDRESSES = [(("::1", 0), True), (("127.0.0.1", 0), False)]
 # RFC 5737: 192.0.2.0/24 is for testing only.
@@ -118,11 +111,7 @@ RESOLVES_LOCALHOST_FQDN = _can_resolve("localhost.")
 
 
 def clear_warnings(cls: Type[Warning] = HTTPWarning) -> None:
-    new_filters = []
-    for f in warnings.filters:
-        if issubclass(f[2], cls):
-            continue
-        new_filters.append(f)
+    new_filters = [f for f in warnings.filters if not issubclass(f[2], cls)]
     warnings.filters[:] = new_filters  # type: ignore[index]
 
 
@@ -313,9 +302,7 @@ class ImportBlocker(MetaPathFinder):
     def find_module(
         self, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = None
     ) -> Optional[Loader]:
-        if fullname in self.namestoblock:
-            return ImportBlockerLoader()
-        return None
+        return ImportBlockerLoader() if fullname in self.namestoblock else None
 
 
 class ModuleStash(MetaPathFinder):
@@ -338,14 +325,14 @@ class ModuleStash(MetaPathFinder):
             self._data[self.namespace] = self.modules.pop(self.namespace)
 
         for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + "."):
+            if module.startswith(f"{self.namespace}."):
                 self._data[module] = self.modules.pop(module)
 
     def pop(self) -> None:
         self.modules.pop(self.namespace, None)
 
         for module in list(self.modules.keys()):
-            if module.startswith(self.namespace + "."):
+            if module.startswith(f"{self.namespace}."):
                 self.modules.pop(module)
 
         self.modules.update(self._data)

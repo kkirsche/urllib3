@@ -286,8 +286,7 @@ class SSLTransport:
             if errno is None:
                 should_loop = False
             elif errno == ssl.SSL_ERROR_WANT_READ:
-                buf = self.socket.recv(SSL_BLOCKSIZE)
-                if buf:
+                if buf := self.socket.recv(SSL_BLOCKSIZE):
                     self.incoming.write(buf)
                 else:
                     self.incoming.write_eof()

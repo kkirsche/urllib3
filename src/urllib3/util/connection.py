@@ -8,7 +8,7 @@ from .wait import wait_for_read
 _TYPE_SOCKET_OPTIONS = Sequence[Tuple[int, int, Union[int, bytes]]]
 
 
-def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
+def is_connection_dropped(conn: socket.socket) -> bool:    # Platform-specific
     """
     Returns True if the connection is dropped and should be closed.
 
@@ -16,10 +16,7 @@ def is_connection_dropped(conn: socket.socket) -> bool:  # Platform-specific
         :class:`http.client.HTTPConnection` object.
     """
     sock = getattr(conn, "sock", None)
-    if sock is None:  # Connection already closed (such as by httplib).
-        return True
-    # Returns True if readable, which here means it's been dropped
-    return wait_for_read(sock, timeout=0.0)
+    return True if sock is None else wait_for_read(sock, timeout=0.0)
 
 
 # This function is copied from socket.py in the Python 2.7 standard
@@ -82,14 +79,13 @@ def create_connection(
             if sock is not None:
                 sock.close()
 
-    if err is not None:
-        try:
-            raise err
-        finally:
-            # Break explicitly a reference cycle
-            err = None
-    else:
+    if err is None:
         raise OSError("getaddrinfo returns an empty list")
+    try:
+        raise err
+    finally:
+        # Break explicitly a reference cycle
+        err = None
 
 
 def _set_socket_options(
@@ -107,10 +103,7 @@ def allowed_gai_family() -> socket.AddressFamily:
     getaddrinfo, where family=socket.AF_UNSPEC is the default and
     will perform a DNS search for both IPv6 and IPv4 records."""
 
-    family = socket.AF_INET
-    if HAS_IPV6:
-        family = socket.AF_UNSPEC
-    return family
+    return socket.AF_UNSPEC if HAS_IPV6 else socket.AF_INET
 
 
 def _has_ipv6(host: str) -> bool:

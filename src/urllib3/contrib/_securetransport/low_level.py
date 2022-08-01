@@ -74,12 +74,11 @@ def _cfstr(py_bstr: bytes) -> CFString:
     The string must be CFReleased by the caller.
     """
     c_str = ctypes.c_char_p(py_bstr)
-    cf_str = CoreFoundation.CFStringCreateWithCString(
+    return CoreFoundation.CFStringCreateWithCString(
         CoreFoundation.kCFAllocatorDefault,
         c_str,
         CFConst.kCFStringEncodingUTF8,
     )
-    return cf_str
 
 
 def _create_cfstring_array(lst: List[bytes]) -> CFMutableArray:
@@ -127,12 +126,12 @@ def _cf_string_to_unicode(value: CFString) -> Optional[str]:
     )
     if string is None:
         buffer = ctypes.create_string_buffer(1024)
-        result = CoreFoundation.CFStringGetCString(
+        if result := CoreFoundation.CFStringGetCString(
             value_as_void_p, buffer, 1024, CFConst.kCFStringEncodingUTF8
-        )
-        if not result:
+        ):
+            string = buffer.value
+        else:
             raise OSError("Error copying C string from CFStringRef")
-        string = buffer.value
     if string is not None:
         string = string.decode("utf-8")
     return string  # type: ignore[no-any-return]
@@ -409,8 +408,7 @@ def _build_tls_unknown_ca_alert(version: str) -> bytes:
     msg = struct.pack(">BB", severity_fatal, description_unknown_ca)
     msg_len = len(msg)
     record_type_alert = 0x15
-    record = struct.pack(">BBBH", record_type_alert, ver_maj, ver_min, msg_len) + msg
-    return record
+    return struct.pack(">BBBH", record_type_alert, ver_maj, ver_min, msg_len) + msg
 
 
 class SecurityConst:
